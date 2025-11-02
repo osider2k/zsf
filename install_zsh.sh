@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-# Prevent multiple executions
+# Prevent multiple executions in same shell
 [[ -n "$INSTALL_ZSH_P10K_DONE" ]] && exit 0
 export INSTALL_ZSH_P10K_DONE=1
 
@@ -17,15 +17,17 @@ elif command -v yum &>/dev/null; then
     sudo yum install -y zsh git curl powerline-fonts
 elif command -v pacman &>/dev/null; then
     sudo pacman -Syu --noconfirm zsh git curl powerline-fonts
+else
+    echo "Unsupported Linux distro. Please install zsh, git, curl manually."
+    exit 1
 fi
 
-# Download install_zsh.sh once
+# Download install_zsh.sh once and execute in subshell
 INSTALL_URL="https://raw.githubusercontent.com/osider2k/zsf/refs/heads/main/install_zsh.sh"
 TMP_INSTALL="/tmp/install_zsh.sh"
+echo "Downloading latest install_zsh.sh..."
 curl -fsSL "$INSTALL_URL" -o "$TMP_INSTALL"
 chmod +x "$TMP_INSTALL"
-
-# Run install_zsh.sh in a subshell to prevent looping
 echo "Running install_zsh.sh..."
 bash "$TMP_INSTALL"
 
@@ -39,8 +41,13 @@ if ! grep -q 'ZSH_THEME="powerlevel10k/powerlevel10k"' "$HOME/.zshrc"; then
     echo 'ZSH_THEME="powerlevel10k/powerlevel10k"' >> "$HOME/.zshrc"
 fi
 
-# Prompt to configure Powerlevel10k
-read -rp "Do you want to configure Powerlevel10k now? (y/n): " ans
-[[ $ans =~ [Yy] ]] && zsh -c 'p10k configure'
+# Prompt to configure Powerlevel10k using /dev/tty for remote execution
+echo ""
+read -rp "Do you want to configure Powerlevel10k now? (y/n): " ans </dev/tty
+if [[ $ans =~ [Yy] ]]; then
+    zsh -c 'p10k configure'
+else
+    echo "You can run 'p10k configure' later anytime."
+fi
 
 echo "✅ Zsh + Powerlevel10k installation finished!"
