@@ -1,11 +1,16 @@
 #!/bin/bash
 set -euo pipefail
 
+# --- SAFETY: Force Bash execution even if called with "sh" ---
+if [ -z "${BASH_VERSION:-}" ]; then
+  exec bash "$0" "$@"
+fi
+
 # --- 0. Configuration & Initialization ---
 
 # Keep sudo alive for the script duration
 sudo -v
-( while true; do sudo -v; sleep 60; done ) &  # Refresh sudo timestamp in background
+( while true; do sudo -v; sleep 60; done ) &  # Refresh sudo timestamp
 SUDO_REFRESH_PID=$!
 trap 'kill $SUDO_REFRESH_PID 2>/dev/null' EXIT
 
