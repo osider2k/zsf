@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-chsh -s /bin/bash
-
 set -euo pipefail
 # clean-zsh-p10k-system.sh
 # System-wide install of Zsh + Oh My Zsh + Powerlevel10k
@@ -11,6 +9,8 @@ set -euo pipefail
 sudo -v
 
 echo "Starting system-wide clean installation of Zsh + Oh My Zsh + Powerlevel10k..."
+# 0) Change back to bash
+chsh -s /bin/bash
 
 # 1) Remove old zsh configs & Oh My Zsh (system-wide defaults)
 [[ -d "/usr/share/oh-my-zsh" ]] && rm -rf "/usr/share/oh-my-zsh"
