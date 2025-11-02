@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+
+chsh -s /bin/bash
+
 set -euo pipefail
 # clean-zsh-p10k-system.sh
 # System-wide install of Zsh + Oh My Zsh + Powerlevel10k
