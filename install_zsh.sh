@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # clean-zsh-p10k-system.sh
-# Clean system-wide install of zsh + Oh My Zsh + Powerlevel10k
-# Usage: curl -fsSL <RAW_URL> | sudo bash
+# System-wide install of Zsh + Oh My Zsh + Powerlevel10k
+# Usage: sudo bash clean-zsh-p10k-system.sh
 
 # Ensure sudo session is active
 sudo -v
@@ -27,9 +27,9 @@ ZSH_BIN="$(command -v zsh)"
 [[ -z "$ZSH_BIN" ]] && { echo "zsh not found after install — aborting."; exit 1; }
 
 # 4) Install Oh My Zsh system-wide
+OMZ_DIR="/usr/share/oh-my-zsh"
 export RUNZSH=no
 export CHSH=no
-OMZ_DIR="/usr/share/oh-my-zsh"
 if [[ ! -d "$OMZ_DIR" ]]; then
     echo "Installing Oh My Zsh system-wide..."
     sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
@@ -43,7 +43,7 @@ if [[ ! -d "$P10K_DIR" ]]; then
     git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$P10K_DIR"
 fi
 
-# 6) Set global default .zshrc (for new users)
+# 6) Set global default .zshrc for new users
 cat > /etc/skel/.zshrc <<'EOF'
 export ZSH="/usr/share/oh-my-zsh"
 ZSH_THEME="powerlevel10k/powerlevel10k"
@@ -51,8 +51,15 @@ plugins=(git)
 source $ZSH/oh-my-zsh.sh
 EOF
 
-echo "System-wide Zsh + Oh My Zsh + Powerlevel10k installation complete!"
-echo "New users will start with Zsh by default. Existing users may need to log out and back in."
+# 7) Update all existing users to Zsh
+echo "Setting Zsh as default shell for all users..."
+for u in $(awk -F: '{ if ($7 !~ /nologin|false|/bin/false/) print $1 }' /etc/passwd); do
+    chsh -s /usr/bin/zsh "$u" || echo "Failed to change shell for user $u"
+done
 
-# 7) Force default shell for current session
+# 8) Force default shell for current session
 chsh -s /usr/bin/zsh
+
+echo "System-wide Zsh + Oh My Zsh + Powerlevel10k installation complete!"
+echo "New users will start with Zsh by default."
+echo "Existing users should log out and back in to use Zsh."
