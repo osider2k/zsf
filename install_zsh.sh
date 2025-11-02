@@ -1,9 +1,5 @@
 #!/bin/bash
 
-# Zsh/Oh My Zsh/Powerlevel10k System-Wide Installer
-# Runs a clean installation for all components, configures /etc/skel for new users,
-# sets Zsh as the default shell for the current user, and prompts for P10k setup.
-
 # --- 0. Configuration & Initialization ---
 
 # Extend sudo privileges for script duration
@@ -32,12 +28,13 @@ CURRENT_USER_HOME=$(eval echo "~$CURRENT_USER")
 
 # Runs commands with retained sudo permission
 run_as_root() {
-    sudo sh -c "$1"
+    # Ensure commands run in a Bash shell environment when elevated
+    sudo /bin/bash -c "$1"
 }
 
 # Runs commands as the original user (not root)
 run_as_user() {
-    sudo -u "$CURRENT_USER" sh -c "$1"
+    sudo -u "$CURRENT_USER" /bin/bash -c "$1"
 }
 
 # Checks if a command exists
@@ -77,6 +74,7 @@ force_git_clone() {
 echo "--- 1. Checking/Installing Zsh and Git Packages ---"
 
 # Determine package manager and install dependencies
+declare PKG_INSTALL
 if command_exists apt; then
   PKG_INSTALL="apt update && apt install -y"
 elif command_exists dnf; then
@@ -99,7 +97,7 @@ if [ -z "$ZSH_BIN" ]; then
         exit 1
     fi
 else
-    echo "Zsh and dependencies are already installed."
+    echo "Zsh package is already installed."
 fi
 
 # --- 2. Configure System Defaults ---
@@ -140,9 +138,9 @@ run_as_root "chmod 644 $SKEL_ZSHRC"
 echo "Applying Zsh configuration settings to $SKEL_ZSHRC..."
 run_as_root "sed -i 's|^export ZSH=.*$|export ZSH=\"${OMZ_SHARED_DIR}\"|' ${SKEL_ZSHRC}"
 run_as_root "sed -i 's|^ZSH_THEME=.*$|ZSH_THEME=\"powerlevel10k\/powerlevel10k\"|' ${SKEL_ZSHRC}"
-run_as_root "sed -i 's|^plugins=.*$|plugins=$PLUGINS_LIST|' ${SKEL_ZSHRC}"
+run_as_root "sed -i 's|^plugins=.*$|plugins=${PLUGINS_LIST}|' ${SKEL_ZSHRC}"
 
-# Create the minimal .p10k.zsh to trigger the wizard
+# Create p10k config file placeholder
 run_as_root "echo '# P10k configuration (wizard will run on first launch)' > /etc/skel/.p10k.zsh"
 run_as_root "chmod 644 /etc/skel/.p10k.zsh"
 
@@ -170,8 +168,9 @@ echo ""
 echo "======================================================================"
 echo "Installation and configuration are complete."
 echo ""
-echo "🔥 **IMPORTANT:** You must **manually install a Nerd Font** on your system (e.g., MesloLGS NF) for P10k to display correctly."
-echo "You must **log out and log back in** for Zsh to be your permanent default shell."
+echo "🔥 **IMPORTANT:**"
+echo "* You must **manually install a Nerd Font** on your system (e.g., MesloLGS NF) for P10k to display correctly."
+echo "* You must **log out and log back in** for Zsh to be your permanent default shell."
 echo "======================================================================"
 
 # Ask the user if they want to run the interactive setup
