@@ -19,13 +19,14 @@ else
     exit 1
 fi
 
-# Download and run latest install_zsh.sh from your repo
+# Download install_zsh.sh once and execute
 INSTALL_URL="https://raw.githubusercontent.com/osider2k/zsf/refs/heads/main/install_zsh.sh"
+TMP_INSTALL="/tmp/install_zsh.sh"
 echo "Downloading latest install_zsh.sh..."
-curl -fsSL "$INSTALL_URL" -o /tmp/install_zsh.sh
-chmod +x /tmp/install_zsh.sh
+curl -fsSL "$INSTALL_URL" -o "$TMP_INSTALL"
+chmod +x "$TMP_INSTALL"
 echo "Running install_zsh.sh..."
-/tmp/install_zsh.sh
+"$TMP_INSTALL"
 
 # Install Powerlevel10k if missing
 P10K_DIR="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k"
