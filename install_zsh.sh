@@ -74,13 +74,11 @@ if ! grep -q '^ZSH_THEME="powerlevel10k/powerlevel10k"' "$ZSHRC" 2>/dev/null; th
     echo 'ZSH_THEME="powerlevel10k/powerlevel10k"' >> "$ZSHRC"
 fi
 
-# 8) Final message and prompt to exit session
+# 8) Final message and switch session to zsh
 echo
 echo "============================================================"
 echo "Installation complete!"
-echo "To activate zsh and launch Powerlevel10k configuration:"
-echo "  1) Close this terminal or exit the current session"
-echo "  2) Start a new terminal session or SSH login"
+echo "Starting zsh now..."
+echo "This will launch Powerlevel10k configuration automatically if needed."
 echo "============================================================"
-read -rp "Press Enter to exit this session..."
-exit
+exec "$ZSH_BIN"
