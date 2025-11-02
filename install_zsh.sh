@@ -20,7 +20,8 @@ SYNTAX_HIGHLIGHTING_REPO="https://github.com/zsh-users/zsh-syntax-highlighting.g
 
 # Configuration settings
 SKEL_ZSHRC="/etc/skel/.zshrc"
-PLUGINS_LIST="(git zsh-autosuggestions zsh-syntax-highlighting)"
+# Note: The PLUGINS_LIST variable now contains the quoted string needed for .zshrc
+PLUGINS_LIST='(git zsh-autosuggestions zsh-syntax-highlighting)' 
 CURRENT_USER=$(whoami)
 CURRENT_USER_HOME=$(eval echo "~$CURRENT_USER")
 
@@ -28,7 +29,6 @@ CURRENT_USER_HOME=$(eval echo "~$CURRENT_USER")
 
 # Runs commands with retained sudo permission
 run_as_root() {
-    # Ensure commands run in a Bash shell environment when elevated
     sudo /bin/bash -c "$1"
 }
 
@@ -136,8 +136,14 @@ run_as_root "chmod 644 $SKEL_ZSHRC"
 
 # Apply settings to the template
 echo "Applying Zsh configuration settings to $SKEL_ZSHRC..."
+
+# Fix 1: Set ZSH path
 run_as_root "sed -i 's|^export ZSH=.*$|export ZSH=\"${OMZ_SHARED_DIR}\"|' ${SKEL_ZSHRC}"
+
+# Fix 2: Set the Powerlevel10k theme
 run_as_root "sed -i 's|^ZSH_THEME=.*$|ZSH_THEME=\"powerlevel10k\/powerlevel10k\"|' ${SKEL_ZSHRC}"
+
+# Fix 3: Set the plugins using text substitution to avoid array parsing issues
 run_as_root "sed -i 's|^plugins=.*$|plugins=${PLUGINS_LIST}|' ${SKEL_ZSHRC}"
 
 # Create p10k config file placeholder
