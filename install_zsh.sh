@@ -2,6 +2,7 @@
 set -euo pipefail
 # clean-zsh-p10k.sh
 # Clean install of zsh + Oh My Zsh + Powerlevel10k (official method)
+# Shows a progress bar for cleaning old configs/packages
 
 TARGET_USER="${SUDO_USER:-$(logname 2>/dev/null || whoami)}"
 TARGET_HOME="$(eval echo "~$TARGET_USER")"
@@ -12,17 +13,35 @@ echo "Running clean install for user: $TARGET_USER (home: $TARGET_HOME)"
 export SHELL="/bin/bash"
 echo "Switched to bash for script session"
 
-# 2) Remove old zsh configs & Oh My Zsh
-[[ -d "$TARGET_HOME/.oh-my-zsh" ]] && rm -rf "$TARGET_HOME/.oh-my-zsh"
-[[ -f "$TARGET_HOME/.zshrc" ]] && rm -f "$TARGET_HOME/.zshrc"
-[[ -f "$TARGET_HOME/.p10k.zsh" ]] && rm -f "$TARGET_HOME/.p10k.zsh"
+# ------------------------------
+# 2) Cleaning old zsh and configs (with progress bar)
+# ------------------------------
+echo "Cleaning old zsh and configs..."
+CLEAN_STEPS=5
 
-# 3) Remove old zsh package and clean old dependencies
-apt remove -y zsh || true
-apt purge -y zsh || true
-apt autoremove -y
+for i in $(seq 1 $CLEAN_STEPS); do
+    case $i in
+        1) rm -rf "$TARGET_HOME/.oh-my-zsh" ;;
+        2) rm -f "$TARGET_HOME/.zshrc" ;;
+        3) rm -f "$TARGET_HOME/.p10k.zsh" ;;
+        4) apt remove -y zsh >/dev/null 2>&1 || true ;;
+        5) apt purge -y zsh >/dev/null 2>&1 || true
+           apt autoremove -y >/dev/null 2>&1 ;;
+    esac
 
-# 4) Update & install fresh zsh + tools
+    # Print progress bar
+    PERCENT=$(( i * 20 ))
+    BAR="["
+    FILLED=$(( PERCENT / 2 ))  # 50 chars max
+    for j in $(seq 1 $FILLED); do BAR+="="; done
+    for j in $(seq $((FILLED+1)) 50); do BAR+=" "; done
+    BAR+="]"
+    echo -ne " $BAR $PERCENT%\r"
+    sleep 0.2
+done
+echo -e "\nCleaning complete!"
+
+# 3) Update & install fresh zsh + tools
 export DEBIAN_FRONTEND=noninteractive
 apt update -y
 apt install -y --no-install-recommends zsh git curl ca-certificates
@@ -30,19 +49,19 @@ apt install -y --no-install-recommends zsh git curl ca-certificates
 ZSH_BIN="$(command -v zsh)"
 [[ -z "$ZSH_BIN" ]] && { echo "zsh not found after install — aborting."; exit 1; }
 
-# 5) Install Oh My Zsh fresh (non-interactive)
+# 4) Install Oh My Zsh fresh (non-interactive)
 su - "$TARGET_USER" -c 'export RUNZSH=no CHSH=no; sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"'
 
-# 6) Set default shell
+# 5) Set default shell
 CURRENT_SHELL="$(getent passwd "$TARGET_USER" | cut -d: -f7 || true)"
 if [[ "$CURRENT_SHELL" != "$ZSH_BIN" ]]; then
     chsh -s "$ZSH_BIN" "$TARGET_USER" || echo "chsh failed — run manually: sudo chsh -s $ZSH_BIN $TARGET_USER"
 fi
 
-# 7) Install Powerlevel10k theme using official ZSH_CUSTOM method
+# 6) Install Powerlevel10k theme using official ZSH_CUSTOM method
 su - "$TARGET_USER" -c 'git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k"'
 
-# 8) Update .zshrc to activate Powerlevel10k theme safely
+# 7) Update .zshrc to activate Powerlevel10k theme safely
 ZSHRC="$TARGET_HOME/.zshrc"
 
 # Comment out any existing ZSH_THEME lines
@@ -55,20 +74,13 @@ if ! grep -q '^ZSH_THEME="powerlevel10k/powerlevel10k"' "$ZSHRC" 2>/dev/null; th
     echo 'ZSH_THEME="powerlevel10k/powerlevel10k"' >> "$ZSHRC"
 fi
 
-# 9) Ask if user wants to run p10k configure
-read -rp "Do you want to run Powerlevel10k configuration now? (y/n): " ans
-if [[ "$ans" =~ ^[Yy]$ ]]; then
-    su - "$TARGET_USER" -c 'p10k configure'
-fi
-
-# 10) Prompt to start using zsh immediately
-read -rp "Do you want to start a new zsh session now? (y/n): " use_zsh
-if [[ "$use_zsh" =~ ^[Yy]$ ]]; then
-    echo "Starting zsh..."
-    exec "$ZSH_BIN"
-else
-    echo "You can start zsh later by running: zsh"
-fi
-
-echo "Clean zsh + Oh My Zsh + Powerlevel10k installation complete!"
-echo "Log out and log back in (or start a new session) to use zsh."
+# 8) Final message and prompt to exit session
+echo
+echo "============================================================"
+echo "Installation complete!"
+echo "To activate zsh and launch Powerlevel10k configuration:"
+echo "  1) Close this terminal or exit the current session"
+echo "  2) Start a new terminal session or SSH login"
+echo "============================================================"
+read -rp "Press Enter to exit this session..."
+exit
