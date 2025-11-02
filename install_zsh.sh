@@ -58,5 +58,5 @@ sudo sed -i 's|/bin/bash|/usr/bin/zsh|g' /etc/passwd
 echo ""
 echo "✅ System-wide Zsh installation complete!"
 echo "All users will now start in Zsh by default."
-echo ""
+echo "Type 'p10k configure' to run the Powerlevel10k setup"
 echo "Shell path: $ZSH_BIN"
