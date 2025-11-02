@@ -4,6 +4,10 @@ set -euo pipefail
 # Clean install of zsh + Oh My Zsh + optional Powerlevel10k
 # Usage: curl -fsSL <RAW_URL> | sudo bash
 
+# Setup sudo until script finish
+sudo -v
+
+
 TARGET_USER="${SUDO_USER:-$(logname 2>/dev/null || whoami)}"
 TARGET_HOME="$(eval echo "~$TARGET_USER")"
 
