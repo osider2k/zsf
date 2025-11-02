@@ -1,44 +1,51 @@
 #!/bin/bash
 
-# --- 0. Initial Setup & Privilege Check ---
+# Zsh/Oh My Zsh/Powerlevel10k System-Wide Installer
+# Runs a clean installation for all components, configures /etc/skel for new users,
+# sets Zsh as the default shell for the current user, and prompts for P10k setup.
 
-# Extend sudo privileges to avoid repeated password prompts
+# --- 0. Configuration & Initialization ---
+
+# Extend sudo privileges for script duration
 sudo -v
 echo "Sudo permissions granted for the script duration."
 
-# --- Configuration Variables ---
+# Shared directories
 OMZ_SHARED_DIR="/usr/share/oh-my-zsh"
 OMZ_CUSTOM_SHARED_DIR="${OMZ_SHARED_DIR}/custom"
-P10K_DIR="${OMZ_CUSTOM_SHARED_DIR}/themes/powerlevel10k"
-AUTO_SUGGESTIONS_DIR="${OMZ_CUSTOM_SHARED_DIR}/plugins/zsh-autosuggestions"
-SYNTAX_HIGHLIGHTING_DIR="${OMZ_CUSTOM_SHARED_DIR}/plugins/zsh-syntax-highlighting"
+
+# Component repositories and paths
+PLUGINS_DIR="${OMZ_CUSTOM_SHARED_DIR}/plugins"
+THEMES_DIR="${OMZ_CUSTOM_SHARED_DIR}/themes"
 
 P10K_REPO="https://github.com/romkatv/powerlevel10k.git"
 AUTO_SUGGESTIONS_REPO="https://github.com/zsh-users/zsh-autosuggestions.git"
 SYNTAX_HIGHLIGHTING_REPO="https://github.com/zsh-users/zsh-syntax-highlighting.git"
 
+# Configuration settings
 SKEL_ZSHRC="/etc/skel/.zshrc"
-PLUGINS="(git zsh-autosuggestions zsh-syntax-highlighting)"
+PLUGINS_LIST="(git zsh-autosuggestions zsh-syntax-highlighting)"
 CURRENT_USER=$(whoami)
+CURRENT_USER_HOME=$(eval echo "~$CURRENT_USER")
 
-# --- Elevated Command Functions ---
+# --- Function Definitions ---
 
-# Function to run commands with retained sudo permission
+# Runs commands with retained sudo permission
 run_as_root() {
     sudo sh -c "$1"
 }
 
-# Function to run commands as the original user (not root)
+# Runs commands as the original user (not root)
 run_as_user() {
     sudo -u "$CURRENT_USER" sh -c "$1"
 }
 
-# Function to check if a command exists
+# Checks if a command exists
 command_exists () {
   command -v "$1" >/dev/null 2>&1
 }
 
-# Function to perform clean-up before installation
+# Force clean removal of a directory
 clean_up_previous_installs() {
     local DIR="$1"
     local NAME="$2"
@@ -48,7 +55,7 @@ clean_up_previous_installs() {
     fi
 }
 
-# Function to force a fresh clone
+# Force a fresh clone (clean install guarantee)
 force_git_clone() {
     local DIR="$1"
     local REPO="$2"
@@ -56,7 +63,7 @@ force_git_clone() {
 
     clean_up_previous_installs "$DIR" "$NAME"
 
-    echo "✨ Installing $NAME..."
+    echo "✨ Installing $NAME (Cloning fresh repository)..."
     if run_as_root "git clone --depth=1 \"$REPO\" \"$DIR\""; then
         echo "✅ $NAME installed successfully."
     else
@@ -65,11 +72,11 @@ force_git_clone() {
     fi
 }
 
-# --- 1. Install/Check Zsh and Git Packages ---
+# --- 1. System Package Installation ---
+
 echo "--- 1. Checking/Installing Zsh and Git Packages ---"
 
-# Determine the package manager
-declare PKG_INSTALL
+# Determine package manager and install dependencies
 if command_exists apt; then
   PKG_INSTALL="apt update && apt install -y"
 elif command_exists dnf; then
@@ -77,26 +84,26 @@ elif command_exists dnf; then
 elif command_exists pacman; then
   PKG_INSTALL="pacman -S --noconfirm"
 else
-  echo "Error: Cannot find a supported package manager (apt, dnf, pacman). Exiting."
+  echo "❌ Error: Cannot find a supported package manager (apt, dnf, pacman). Exiting."
   exit 1
 fi
 
 ZSH_BIN=$(command -v zsh)
-GIT_BIN=$(command -v git)
 
-if [ -z "$ZSH_BIN" ] || [ -z "$GIT_BIN" ]; then
-    echo "Zsh or Git missing. Installing packages..."
+if [ -z "$ZSH_BIN" ]; then
+    echo "Zsh package missing. Installing packages..."
     run_as_root "$PKG_INSTALL zsh git curl wget"
     ZSH_BIN=$(command -v zsh)
     if [ -z "$ZSH_BIN" ]; then
-        echo "Fatal Error: Zsh installation failed. Exiting."
+        echo "❌ Fatal Error: Zsh installation failed. Exiting."
         exit 1
     fi
 else
-    echo "Zsh and Git are already installed."
+    echo "Zsh and dependencies are already installed."
 fi
 
-# --- 2. Set Zsh as the default shell for NEW user creation ---
+# --- 2. Configure System Defaults ---
+
 echo "--- 2. Setting Zsh as the default shell for NEW users ---"
 if [ -f /etc/adduser.conf ]; then
     run_as_root "sed -i 's/^DSHELL=.*$/DSHELL=\/bin\/zsh/' /etc/adduser.conf"
@@ -106,67 +113,76 @@ if [ -f /etc/default/useradd ]; then
 fi
 echo "New user defaults updated."
 
-# --- 3. Clean and Install Oh My Zsh Framework ---
-echo "--- 3. Clean and Install Oh My Zsh Framework ---"
-force_git_clone "${OMZ_SHARED_DIR}" "https://github.com/ohmyzsh/ohmyzsh.git" "Oh My Zsh"
-run_as_root "mkdir -p ${OMZ_CUSTOM_SHARED_DIR}/themes ${OMZ_CUSTOM_SHARED_DIR}/plugins" # Recreate custom folders
+# --- 3. Clean Install Components (Shared) ---
 
-# --- 4. Clean and Install Powerlevel10k Theme ---
-echo "--- 4. Clean and Install Powerlevel10k Theme ---"
-force_git_clone "$P10K_DIR" "$P10K_REPO" "Powerlevel10k"
+echo "--- 3. Clean Install Zsh Components (Shared) ---"
 
-# --- 5. Clean and Install Zsh Plugins ---
-echo "--- 5. Clean and Install Zsh Plugins (Autosuggestions, Syntax-Highlighting) ---"
-force_git_clone "$AUTO_SUGGESTIONS_DIR" "$AUTO_SUGGESTIONS_REPO" "zsh-autosuggestions"
-force_git_clone "$SYNTAX_HIGHLIGHTING_DIR" "$SYNTAX_HIGHLIGHTING_REPO" "zsh-syntax-highlighting"
+# Oh My Zsh Framework
+force_git_clone "${OMZ_SHARED_DIR}" "https://github.com/ohmyzsh/ohmyzsh.git" "Oh My Zsh Framework"
+run_as_root "mkdir -p ${OMZ_CUSTOM_SHARED_DIR}/themes ${OMZ_CUSTOM_SHARED_DIR}/plugins"
 
+# Powerlevel10k Theme
+force_git_clone "${THEMES_DIR}/powerlevel10k" "$P10K_REPO" "Powerlevel10k Theme"
 
-# --- 6. Configure /etc/skel for New Users ---
-echo "--- 6. Configuring /etc/skel for new users ---"
+# Plugins
+force_git_clone "${PLUGINS_DIR}/zsh-autosuggestions" "$AUTO_SUGGESTIONS_REPO" "zsh-autosuggestions Plugin"
+force_git_clone "${PLUGINS_DIR}/zsh-syntax-highlighting" "$SYNTAX_HIGHLIGHTING_REPO" "zsh-syntax-highlighting Plugin"
 
-# a. Copy the OMZ template to skel
-echo "Creating fresh $SKEL_ZSHRC template..."
-run_as_root "cp ${OMZ_SHARED_DIR}/templates/zshrc.zsh-template ${SKEL_ZSHRC}"
+# --- 4. Configure /etc/skel for All New Users ---
+
+echo "--- 4. Configuring /etc/skel for ALL new users ---"
+
+# Create/overwrite the default .zshrc template
+run_as_root "cp -f ${OMZ_SHARED_DIR}/templates/zshrc.zsh-template ${SKEL_ZSHRC}"
 run_as_root "chmod 644 $SKEL_ZSHRC"
 
-# b. Update the ZSH path, theme, and plugins in /etc/skel/.zshrc
+# Apply settings to the template
 echo "Applying Zsh configuration settings to $SKEL_ZSHRC..."
 run_as_root "sed -i 's|^export ZSH=.*$|export ZSH=\"${OMZ_SHARED_DIR}\"|' ${SKEL_ZSHRC}"
 run_as_root "sed -i 's|^ZSH_THEME=.*$|ZSH_THEME=\"powerlevel10k\/powerlevel10k\"|' ${SKEL_ZSHRC}"
-run_as_root "sed -i 's|^plugins=.*$|plugins=$PLUGINS|' ${SKEL_ZSHRC}"
+run_as_root "sed -i 's|^plugins=.*$|plugins=$PLUGINS_LIST|' ${SKEL_ZSHRC}"
 
-# c. Create p10k config file placeholder
-run_as_root "touch /etc/skel/.p10k.zsh"
-run_as_root "echo '# Powerlevel10k configuration (auto-generated by p10k configure)' > /etc/skel/.p10k.zsh"
+# Create the minimal .p10k.zsh to trigger the wizard
+run_as_root "echo '# P10k configuration (wizard will run on first launch)' > /etc/skel/.p10k.zsh"
 run_as_root "chmod 644 /etc/skel/.p10k.zsh"
 
+# --- 5. Configure Current User ---
 
-# --- 7. Final Step: Configure Current User's Shell and Setup Zsh ---
-echo "--- 7. Configuring Current User ($CURRENT_USER) Shell ---"
+echo "--- 5. Configuring Current User ($CURRENT_USER) ---"
 
-# a. Set Zsh as the default shell for the current user
-if [ "$(dscl . -read /Users/$CURRENT_USER UserShell 2>/dev/null | awk '{print $2}')" != "$ZSH_BIN" ]; then
-    # Use chsh if available (most Linux/Unix systems)
+# Set Zsh as the default shell for the current user
+if [ "$(getent passwd "$CURRENT_USER" | cut -d: -f7)" != "$ZSH_BIN" ]; then
     if command_exists chsh; then
-        echo "Setting Zsh as default shell for $CURRENT_USER using chsh."
-        # The user's password may be required here, separate from the initial sudo -v
+        echo "Setting Zsh as permanent default shell via chsh. **Your user password may be required.**"
         chsh -s "$ZSH_BIN" "$CURRENT_USER"
-    else
-        echo "Warning: 'chsh' command not found. You must manually change your shell via your user management tools."
     fi
 fi
 
-# b. Copy the /etc/skel files to the current user's home directory
-echo "Copying global config to current user's home directory (~/.zshrc and ~/.p10k.zsh)..."
-run_as_user "cp -n /etc/skel/.zshrc $HOME/.zshrc"
-run_as_user "cp -n /etc/skel/.p10k.zsh $HOME/.p10k.zsh"
+# Overwrite current user's config files to ensure a clean start and P10k launch
+echo "Overwriting current user's config files (~/.zshrc and ~/.p10k.zsh)..."
+run_as_user "cp -f $SKEL_ZSHRC $CURRENT_USER_HOME/.zshrc"
+run_as_user "cp -f /etc/skel/.p10k.zsh $CURRENT_USER_HOME/.p10k.zsh"
+run_as_user "chmod 644 $CURRENT_USER_HOME/.zshrc $CURRENT_USER_HOME/.p10k.zsh"
 
-# c. Run Zsh now to trigger configuration wizard
+# --- 6. User Prompt and Execution ---
+
 echo ""
 echo "======================================================================"
-echo "Setup Complete! Starting Zsh now for initial configuration."
-echo "You must **log out and log back in** for Zsh to become your permanent default shell."
+echo "Installation and configuration are complete."
+echo ""
+echo "🔥 **IMPORTANT:** You must **manually install a Nerd Font** on your system (e.g., MesloLGS NF) for P10k to display correctly."
+echo "You must **log out and log back in** for Zsh to be your permanent default shell."
 echo "======================================================================"
 
-# Execute Zsh, which will trigger p10k configure on first run
-exec "$ZSH_BIN"
+# Ask the user if they want to run the interactive setup
+read -r -p "Do you want to start Zsh now to run the Powerlevel10k configuration wizard? (Y/n): " response
+
+if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+    echo "Starting Zsh for interactive setup..."
+    echo "======================================================================"
+    # Execute Zsh, which will start the p10k configure wizard
+    exec "$ZSH_BIN"
+else
+    echo "Installation completed. The P10k configuration wizard will run the next time you start Zsh."
+    echo "Run 'zsh' or log out/in to begin using your new shell."
+fi
