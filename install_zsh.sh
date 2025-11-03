@@ -120,3 +120,26 @@ echo "✅ System-wide Zsh installation complete!"
 echo "All users will now start in Zsh by default."
 echo "Type 'p10k configure' to run the Powerlevel10k setup."
 echo "Shell path: $ZSH_BIN"
+
+# -----------------------------------------------------
+# 10) Source .zshrc for current and existing users
+# -----------------------------------------------------
+echo "Sourcing .zshrc for current user..."
+if [[ -f ~/.zshrc ]]; then
+    source ~/.zshrc
+fi
+
+echo "Sourcing .zshrc for existing users..."
+for uhome in /home/*; do
+    [ -d "$uhome" ] || continue
+    user=$(basename "$uhome")
+    zshrc="$uhome/.zshrc"
+
+    [ -f "$zshrc" ] || continue
+
+    # Use sudo -u to run source in a subshell as that user
+    sudo -u "$user" zsh -c "source $zshrc"
+done
+
+echo "✅ All users' Zsh environments have been updated."
+
